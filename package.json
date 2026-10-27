@@ -1,0 +1,13 @@
+{
+  "name": "chongni-admin",
+  "private": true,
+  "description": "宠溺管理后台",
+  "scripts": {
+    "start": "node server.js",
+    "pack": "bash scripts/pack-docker.sh",
+    "docker:build": "bash -c 'mkdir -p seed && cp -f ../chongni/data/catalog.js seed/catalog.js 2>/dev/null || true; docker build --platform linux/amd64 -t chongni-admin:latest .'",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  }
+}

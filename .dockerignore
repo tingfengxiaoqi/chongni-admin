@@ -1,0 +1,10 @@
+.git
+.gitignore
+data
+uploads
+config.json
+dist
+*.md
+scripts
+node_modules
+.DS_Store

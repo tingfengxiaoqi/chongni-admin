@@ -1,0 +1,24 @@
+{
+  "password": "请改成强密码",
+  "port": 8789,
+  "publicBase": "https://你的域名",
+  "payMode": "sandbox",
+  "mapProvider": "qq",
+  "qqMapKey": "",
+  "amapKey": "",
+  "baiduAk": "",
+  "nearbyRadius": 5000,
+  "sms": {
+    "mode": "http",
+    "codeTtlSec": 300,
+    "webhook": "",
+    "devFixedCode": ""
+  },
+  "wx": {
+    "appId": "",
+    "appSecret": "",
+    "mchId": "",
+    "apiKey": "",
+    "notifyUrl": ""
+  }
+}

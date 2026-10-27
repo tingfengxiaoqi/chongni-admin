@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>宠溺管理系统</title>
+  <style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; font-family: "PingFang SC", "Noto Sans SC", sans-serif; background: #F6F1EA; color: #2C241C; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .gate { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, #FF8A4C, #FF6A2A 55%, #E24B4B); padding: 24px; }
+    .gate-card { width: 380px; background: #FFFDF9; border-radius: 18px; padding: 32px; box-shadow: 0 20px 50px rgba(80, 30, 10, .18); }
+    .gate-card h1 { margin: 0 0 8px; font-size: 28px; }
+    .muted { color: #8A8178; margin: 0; line-height: 1.6; }
+    label { display: block; margin: 14px 0 6px; color: #5C5144; font-size: 14px; }
+    input, select, textarea { width: 100%; border: 1px solid #E8DDD0; border-radius: 10px; padding: 10px 12px; background: #fff; }
+    textarea { min-height: 80px; resize: vertical; }
+    .btn { border: 0; border-radius: 10px; background: #FF6A2A; color: #fff; padding: 10px 16px; }
+    .btn.ghost { background: #F1E8DD; color: #2C241C; }
+    .btn.danger { background: #E24B4B; }
+    .btn.full { width: 100%; margin-top: 18px; }
+    .btn.sm { padding: 6px 10px; font-size: 13px; }
+    .error { color: #E24B4B; min-height: 1.2em; margin: 8px 0 0; }
+    .shell { min-height: 100vh; display: grid; grid-template-columns: 220px 1fr; }
+    .side {
+      position: sticky; top: 0; align-self: start;
+      height: 100vh; max-height: 100vh;
+      background: #2C241C; color: #FFF8F1;
+      display: flex; flex-direction: column;
+      padding: 22px 14px; overflow: hidden; z-index: 20;
+    }
+    .brand { padding: 0 10px 22px; flex-shrink: 0; }
+    .brand strong { display: block; font-size: 20px; }
+    .brand span { color: #C9B8A8; font-size: 13px; }
+    .side-nav { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+    .nav-btn { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: #FFF8F1; border-radius: 10px; padding: 12px; margin-bottom: 4px; }
+    .nav-btn.on { background: #FF6A2A; }
+    .side .logout { margin-top: 12px; flex-shrink: 0; width: 100%; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px; background: #FFFDF9; border-bottom: 1px solid #E8DDD0; }
+    .top h1 { margin: 0; font-size: 22px; }
+    .content { padding: 20px 24px 40px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+    .stats.six { grid-template-columns: repeat(3, 1fr); }
+    .stat { background: #FFFDF9; border-radius: 14px; padding: 16px; box-shadow: 0 8px 20px rgba(80,40,10,.05); }
+    .stat b { display: block; font-size: 28px; margin-top: 4px; color: #FF6A2A; }
+    .panel { background: #FFFDF9; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 20px rgba(80,40,10,.05); margin-bottom: 18px; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #F0E7DC; flex-wrap: wrap; }
+    .panel-head h2 { margin: 0; font-size: 16px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .toolbar input, .toolbar select { width: auto; min-width: 140px; padding: 8px 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid #F3EBE1; vertical-align: top; font-size: 14px; }
+    th { color: #8A8178; font-weight: 600; background: #FCFAF7; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #FFF1E6; color: #C24E12; font-size: 12px; }
+    .tag.ok { background: #E8F7EE; color: #1F7A45; }
+    .tag.warn { background: #FFF4D6; color: #9A6B00; }
+    .tag.bad { background: #FDECEC; color: #B42318; }
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .hint { font-size: 13px; color: #8A8178; padding: 0 18px 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .list-item { padding: 12px 18px; border-bottom: 1px solid #F3EBE1; }
+    .list-item:last-child { border-bottom: 0; }
+    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 10px 18px; border-bottom: 1px solid #F3EBE1; font-size: 14px; }
+    .kv:last-child { border-bottom: 0; }
+    .kv span { color: #8A8178; }
+    .ok-dot { color: #1F7A45; }
+    .bad-dot { color: #B42318; }
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      .side {
+        position: sticky; top: 0; height: auto; max-height: none;
+        flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: center;
+        overflow: visible; z-index: 30;
+      }
+      .brand { padding: 0 8px 0 0; }
+      .side-nav { display: contents; }
+      .side .logout { margin-top: 0; width: auto; margin-left: auto; }
+      .stats, .stats.six, .grid-2, .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="gate" class="gate">
+    <div class="gate-card">
+      <h1>宠溺管理</h1>
+      <p class="muted">运营概览 · 商城订单 · 用户内容</p>
+      <label>管理密码</label>
+      <input id="password" type="password" placeholder="请输入密码" autocomplete="current-password">
+      <p id="loginError" class="error"></p>
+      <button class="btn full" id="loginBtn">进入后台</button>
+    </div>
+  </div>
+
+  <div id="shell" class="shell" hidden>
+    <aside class="side">
+      <div class="brand"><strong>宠溺</strong><span>运营后台</span></div>
+      <nav class="side-nav">
+        <button class="nav-btn on" data-view="dash">📊 运营概览</button>
+        <button class="nav-btn" data-view="goods">🛒 商城维护</button>
+        <button class="nav-btn" data-view="orders">📦 订单管理</button>
+        <button class="nav-btn" data-view="users">👤 用户</button>
+        <button class="nav-btn" data-view="pets">🐾 宠物档案</button>
+        <button class="nav-btn" data-view="posts">🖼️ 动态审核</button>
+        <button class="nav-btn" data-view="social">💬 社交关系</button>
+        <button class="nav-btn" data-view="system">⚙️ 系统状态</button>
+      </nav>
+      <button class="btn ghost logout" id="logoutBtn">退出登录</button>
+    </aside>
+    <main class="main">
+      <div class="top">
+        <h1 id="pageTitle">运营概览</h1>
+        <div class="toolbar">
+          <span class="muted" id="syncHint">—</span>
+          <button class="btn ghost sm" id="refreshBtn">刷新</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats" id="topStats">
+          <div class="stat"><span class="muted">用户</span><b id="statUsers">0</b></div>
+          <div class="stat"><span class="muted">成交额</span><b id="statRevenue">¥0</b></div>
+          <div class="stat"><span class="muted">待发货</span><b id="statPendingShip">0</b></div>
+          <div class="stat"><span class="muted">今日订单</span><b id="statTodayOrders">0</b></div>
+        </div>
+
+        <section id="view-dash">
+          <div class="stats six">
+            <div class="stat"><span class="muted">在售商品</span><b id="dGoods">0</b></div>
+            <div class="stat"><span class="muted">低库存</span><b id="dLow">0</b></div>
+            <div class="stat"><span class="muted">待支付</span><b id="dUnpaid">0</b></div>
+            <div class="stat"><span class="muted">公开动态</span><b id="dPosts">0</b></div>
+            <div class="stat"><span class="muted">好友关系</span><b id="dFriends">0</b></div>
+            <div class="stat"><span class="muted">宠物数</span><b id="dPets">0</b></div>
+          </div>
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-head"><h2>最近订单</h2></div>
+              <div id="dashOrders"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h2>最近动态</h2></div>
+              <div id="dashPosts"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>低库存商品（≤5）</h2></div>
+            <div id="dashLow"></div>
+          </div>
+        </section>
+
+        <section id="view-goods" hidden>
+          <div class="panel">
+            <div class="panel-head">
+              <h2 id="goodsFormTitle">新增商品</h2>
+              <button class="btn ghost sm" id="resetGoodsBtn" type="button">清空表单</button>
+            </div>
+            <div class="form-grid">
+              <div><label>名称</label><input id="gName"></div>
+              <div><label>价格</label><input id="gPrice" type="number" min="0" step="0.01"></div>
+              <div><label>分类</label><select id="gCat"></select></div>
+              <div><label>库存</label><input id="gStock" type="number" min="0" value="99"></div>
+              <div><label>图标（无图时用）</label><input id="gIcon" maxlength="4" value="🛒"></div>
+              <div><label>已售展示</label><input id="gSold" value="0"></div>
+              <div class="full"><label>一句话卖点</label><input id="gDesc" placeholder="列表页短描述"></div>
+              <div class="full">
+                <label>缩略图</label>
+                <div class="toolbar" style="margin-bottom:8px">
+                  <input id="gThumb" placeholder="图片 URL 或上传后自动填入">
+                  <input id="gThumbFile" type="file" accept="image/*" style="max-width:220px">
+                  <button class="btn ghost sm" type="button" id="uploadThumbBtn">上传缩略图</button>
+                </div>
+                <img id="gThumbPreview" alt="" style="display:none;max-width:160px;max-height:160px;border-radius:12px;object-fit:cover;background:#F8F3EC">
+              </div>
+              <div class="full">
+                <label>介绍页图集（可多张，每行一个 URL）</label>
+                <div class="toolbar" style="margin-bottom:8px">
+                  <input id="gGalleryFile" type="file" accept="image/*" multiple style="max-width:260px">
+                  <button class="btn ghost sm" type="button" id="uploadGalleryBtn">上传到图集</button>
+                </div>
+                <textarea id="gImages" placeholder="/uploads/xxx.jpg" style="min-height:100px"></textarea>
+                <div id="gGalleryPreview" class="toolbar" style="margin-top:8px"></div>
+              </div>
+              <div class="full">
+                <label>产品介绍页正文</label>
+                <textarea id="gIntro" placeholder="详细介绍：成分、适用宠物、使用方法、注意事项等（支持换行）" style="min-height:180px"></textarea>
+              </div>
+              <div><label>上架</label><select id="gOnSale"><option value="true">上架</option><option value="false">下架</option></select></div>
+              <div style="display:flex;align-items:end"><button class="btn" id="saveGoodsBtn">保存商品</button></div>
+            </div>
+            <p class="hint">缩略图用于商城列表；介绍页正文与图集用于商品详情页。</p>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h2>商品列表</h2>
+              <div class="toolbar">
+                <input id="goodsQ" placeholder="搜索商品名">
+                <select id="goodsFilter">
+                  <option value="all">全部</option>
+                  <option value="on">仅上架</option>
+                  <option value="off">仅下架</option>
+                  <option value="low">低库存</option>
+                </select>
+              </div>
+            </div>
+            <table><thead><tr><th>预览</th><th>商品</th><th>分类</th><th>价格</th><th>库存</th><th>状态</th><th>操作</th></tr></thead><tbody id="goodsBody"></tbody></table>
+          </div>
+        </section>
+
+        <section id="view-orders" hidden>
+          <div class="panel">
+            <div class="panel-head">
+              <h2>订单管理</h2>
+              <div class="toolbar">
+                <input id="orderQ" placeholder="搜订单号/手机/姓名">
+                <select id="orderPay">
+                  <option value="all">支付状态</option>
+                  <option value="unpaid">待支付</option>
+                  <option value="paid">已支付</option>
+                  <option value="refunded">已退款</option>
+                </select>
+                <select id="orderStatus">
+                  <option value="all">履约状态</option>
+                  <option value="pending">待发货</option>
+                  <option value="shipping">配送中</option>
+                  <option value="done">已完成</option>
+                  <option value="cancelled">已取消</option>
+                </select>
+              </div>
+            </div>
+            <table><thead><tr><th>订单</th><th>收货</th><th>商品</th><th>金额</th><th>支付/履约</th><th>操作</th></tr></thead><tbody id="ordersBody"></tbody></table>
+          </div>
+        </section>
+
+        <section id="view-users" hidden>
+          <div class="panel">
+            <div class="panel-head">
+              <h2>注册用户</h2>
+              <div class="toolbar">
+                <input id="userQ" placeholder="搜昵称/手机/城市">
+                <select id="userStatus">
+                  <option value="all">全部状态</option>
+                  <option value="active">正常</option>
+                  <option value="banned">已停用</option>
+                </select>
+              </div>
+            </div>
+            <table><thead><tr><th>用户</th><th>手机</th><th>城市</th><th>宠物/订单/动态</th><th>状态</th><th>操作</th></tr></thead><tbody id="usersBody"></tbody></table>
+          </div>
+        </section>
+
+        <section id="view-pets" hidden>
+          <div class="panel">
+            <div class="panel-head">
+              <h2>宠物档案</h2>
+              <input id="petQ" placeholder="搜宠物名/主人/品种" style="max-width:240px">
+            </div>
+            <table><thead><tr><th>宠物</th><th>主人</th><th>品种</th><th>性别</th><th>生日</th><th>登记时间</th></tr></thead><tbody id="petsBody"></tbody></table>
+          </div>
+        </section>
+
+        <section id="view-posts" hidden>
+          <div class="panel">
+            <div class="panel-head">
+              <h2>广场动态</h2>
+              <div class="toolbar">
+                <input id="postQ" placeholder="搜作者/内容">
+                <select id="postStatus">
+                  <option value="all">全部</option>
+                  <option value="published">公开</option>
+                  <option value="hidden">已隐藏</option>
+                </select>
+              </div>
+            </div>
+            <table><thead><tr><th>作者</th><th>内容</th><th>互动</th><th>状态</th><th>操作</th></tr></thead><tbody id="postsBody"></tbody></table>
+          </div>
+        </section>
+
+        <section id="view-social" hidden>
+          <div class="stats">
+            <div class="stat"><span class="muted">好友关系</span><b id="sFriends">0</b></div>
+            <div class="stat"><span class="muted">消息总数</span><b id="sMsg">0</b></div>
+            <div class="stat"><span class="muted">未读消息</span><b id="sUnread">0</b></div>
+            <div class="stat"><span class="muted">平均会话条数</span><b id="sAvg">0</b></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>好友对</h2></div>
+            <table><thead><tr><th>用户 A</th><th>用户 B</th><th>消息数</th><th>建立时间</th></tr></thead><tbody id="socialBody"></tbody></table>
+          </div>
+        </section>
+
+        <section id="view-system" hidden>
+          <div class="panel">
+            <div class="panel-head"><h2>运行配置（只读）</h2></div>
+            <div id="systemBody"></div>
+            <p class="hint">密钥与密码请在服务器 `config.json` 修改后重启服务。地图 Key、支付商户号不会在页面明文展示。</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const gate = document.getElementById('gate')
+    const shell = document.getElementById('shell')
+    let cats = ['主粮', '零食', '用品', '玩具', '健康', '清洁']
+    let goods = [], orders = [], users = [], posts = [], pets = [], social = null, dash = null, system = null
+    let editingId = ''
+    let currentView = 'dash'
+
+    async function api(path, method, body) {
+      const res = await fetch(path, {
+        method: method || 'GET',
+        credentials: 'include',
+        headers: body ? { 'content-type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || '请求失败')
+      return data
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    }
+    function payClass(s) { return s === 'paid' ? 'ok' : s === 'refunded' ? 'bad' : 'warn' }
+    function statusClass(s) { return s === 'done' ? 'ok' : s === 'cancelled' ? 'bad' : s === 'shipping' ? 'warn' : '' }
+
+    function fillCats() {
+      document.getElementById('gCat').innerHTML = cats.map((c) => '<option value="' + c + '">' + c + '</option>').join('')
+    }
+
+    function resetGoodsForm() {
+      editingId = ''
+      document.getElementById('goodsFormTitle').textContent = '新增商品'
+      ;['gName', 'gPrice', 'gDesc', 'gThumb', 'gImages', 'gIntro'].forEach((id) => document.getElementById(id).value = '')
+      document.getElementById('gStock').value = '99'
+      document.getElementById('gIcon').value = '🛒'
+      document.getElementById('gSold').value = '0'
+      document.getElementById('gOnSale').value = 'true'
+      document.getElementById('gThumbFile').value = ''
+      document.getElementById('gGalleryFile').value = ''
+      updateThumbPreview()
+      updateGalleryPreview()
+    }
+
+    function updateThumbPreview() {
+      const url = document.getElementById('gThumb').value.trim()
+      const img = document.getElementById('gThumbPreview')
+      if (!url) { img.style.display = 'none'; img.removeAttribute('src'); return }
+      img.src = url
+      img.style.display = 'block'
+    }
+
+    function updateGalleryPreview() {
+      const box = document.getElementById('gGalleryPreview')
+      const urls = document.getElementById('gImages').value.split(/\n+/).map((s) => s.trim()).filter(Boolean)
+      box.innerHTML = urls.map((u) => '<img src="' + escapeHtml(u) + '" style="width:72px;height:72px;object-fit:cover;border-radius:8px;background:#F8F3EC">').join('')
+    }
+
+    async function uploadImageFile(file) {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'content-type': file.type || 'application/octet-stream',
+          'x-filename': file.name || 'image.jpg'
+        },
+        body: file
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || '上传失败')
+      return data.url
+    }
+
+    function renderTopStats() {
+      const d = dash || {}
+      document.getElementById('statUsers').textContent = d.users || 0
+      document.getElementById('statRevenue').textContent = '¥' + (d.revenue || 0)
+      document.getElementById('statPendingShip').textContent = d.pendingShip || 0
+      document.getElementById('statTodayOrders').textContent = d.todayOrders || 0
+      document.getElementById('syncHint').textContent =
+        '支付:' + (d.payMode || 'sandbox') + ' · 短信:' + (d.smsMode || 'dev') + ' · 地图:' + (d.mapProvider || '-') +
+        (d.mapReady ? ' ✓' : ' 未配Key')
+    }
+
+    function renderDash() {
+      const d = dash || {}
+      document.getElementById('dGoods').textContent = d.goodsOnSale || 0
+      document.getElementById('dLow').textContent = d.lowStock || 0
+      document.getElementById('dUnpaid').textContent = d.unpaid || 0
+      document.getElementById('dPosts').textContent = d.posts || 0
+      document.getElementById('dFriends').textContent = d.friendships || 0
+      document.getElementById('dPets').textContent = d.pets || 0
+      document.getElementById('dashOrders').innerHTML = (d.recentOrders || []).map((o) =>
+        '<div class="list-item"><strong>' + escapeHtml(o.id) + '</strong> · ¥' + o.amount +
+        '<div class="muted">' + escapeHtml(o.name) + ' ' + escapeHtml(o.phone) + ' · ' + escapeHtml(o.payStatusText) + '/' + escapeHtml(o.statusText) + '</div></div>'
+      ).join('') || '<div class="list-item muted">暂无订单</div>'
+      document.getElementById('dashPosts').innerHTML = (d.recentPosts || []).map((p) =>
+        '<div class="list-item"><strong>' + escapeHtml(p.user) + '</strong><div class="muted">' + escapeHtml((p.text || '').slice(0, 60)) + '</div></div>'
+      ).join('') || '<div class="list-item muted">暂无动态</div>'
+      document.getElementById('dashLow').innerHTML = (d.lowStockGoods || []).map((g) =>
+        '<div class="list-item">' + g.icon + ' ' + escapeHtml(g.name) + ' <span class="tag warn">库存 ' + g.stock + '</span></div>'
+      ).join('') || '<div class="list-item muted">暂无低库存商品</div>'
+    }
+
+    function filteredGoods() {
+      const q = (document.getElementById('goodsQ').value || '').trim()
+      const f = document.getElementById('goodsFilter').value
+      return goods.filter((g) => {
+        if (q && String(g.name).indexOf(q) < 0) return false
+        if (f === 'on' && !g.onSale) return false
+        if (f === 'off' && g.onSale) return false
+        if (f === 'low' && !(g.onSale && Number(g.stock) <= 5)) return false
+        return true
+      })
+    }
+
+    function filteredOrders() {
+      const q = (document.getElementById('orderQ').value || '').trim()
+      const pay = document.getElementById('orderPay').value
+      const st = document.getElementById('orderStatus').value
+      return orders.filter((o) => {
+        if (pay !== 'all' && o.payStatus !== pay) return false
+        if (st !== 'all' && o.status !== st) return false
+        if (!q) return true
+        return [o.id, o.name, o.phone, o.address].join(' ').indexOf(q) >= 0
+      })
+    }
+
+    function filteredUsers() {
+      const q = (document.getElementById('userQ').value || '').trim()
+      const st = document.getElementById('userStatus').value
+      return users.filter((u) => {
+        if (st !== 'all' && (u.status || 'active') !== st) return false
+        if (!q) return true
+        return [u.nickname, u.phone, u.city].join(' ').indexOf(q) >= 0
+      })
+    }
+
+    function filteredPets() {
+      const q = (document.getElementById('petQ').value || '').trim()
+      if (!q) return pets
+      return pets.filter((p) => [p.name, p.breed, p.ownerName, p.ownerPhone, p.species].join(' ').indexOf(q) >= 0)
+    }
+
+    function filteredPosts() {
+      const q = (document.getElementById('postQ').value || '').trim()
+      const st = document.getElementById('postStatus').value
+      return posts.filter((p) => {
+        if (st !== 'all' && (p.status || 'published') !== st) return false
+        if (!q) return true
+        return [p.user, p.text, p.rawText].join(' ').indexOf(q) >= 0
+      })
+    }
+
+    function renderGoods() {
+      document.getElementById('goodsBody').innerHTML = filteredGoods().map((g) => {
+        const thumb = g.thumb
+          ? '<img src="' + escapeHtml(g.thumb) + '" style="width:56px;height:56px;object-fit:cover;border-radius:10px;background:#F8F3EC">'
+          : '<div style="width:56px;height:56px;border-radius:10px;background:#FFF1E6;display:flex;align-items:center;justify-content:center;font-size:24px">' + (g.icon || '🛒') + '</div>'
+        return '<tr><td>' + thumb + '</td><td>' + escapeHtml(g.name) +
+          (g.desc ? '<div class="muted">' + escapeHtml(g.desc) + '</div>' : '') +
+          (Number(g.stock) <= 5 ? ' <span class="tag warn">低库存</span>' : '') +
+          (g.intro ? ' <span class="tag">有介绍页</span>' : '') +
+          '</td><td>' + escapeHtml(g.cat) + '</td><td>¥' + g.price + '</td><td>' + g.stock +
+          '</td><td><span class="tag ' + (g.onSale ? 'ok' : 'bad') + '">' + (g.onSale ? '上架' : '下架') +
+          '</span></td><td class="actions"><button class="btn ghost sm" data-edit="' + g.id + '">编辑</button>' +
+          '<button class="btn ghost sm" data-toggle="' + g.id + '">' + (g.onSale ? '下架' : '上架') + '</button>' +
+          '<button class="btn danger sm" data-del="' + g.id + '">删除</button></td></tr>'
+      }).join('') || '<tr><td colspan="7" class="muted">暂无</td></tr>'
+    }
+
+    function renderOrders() {
+      document.getElementById('ordersBody').innerHTML = filteredOrders().map((o) =>
+        '<tr><td>' + escapeHtml(o.id) + '<div class="muted">' + escapeHtml(o.createdAt || '') + '</div></td>' +
+        '<td>' + escapeHtml(o.name) + '<br>' + escapeHtml(o.phone) + '<br>' + escapeHtml(o.address) +
+        (o.remark ? '<div class="muted">备注：' + escapeHtml(o.remark) + '</div>' : '') + '</td>' +
+        '<td>' + (o.items || []).map((i) => i.icon + ' ' + i.name + '×' + i.count).join('<br>') + '</td>' +
+        '<td>¥' + o.amount + '</td><td><span class="tag ' + payClass(o.payStatus) + '">' + escapeHtml(o.payStatusText) +
+        '</span><br><span class="tag ' + statusClass(o.status) + '">' + escapeHtml(o.statusText) + '</span></td>' +
+        '<td class="actions">' +
+        (o.payStatus === 'unpaid' ? '<button class="btn sm" data-pay="' + o.id + '">标记已付</button>' : '') +
+        (o.payStatus === 'paid' ? '<button class="btn ghost sm" data-refund="' + o.id + '">退款</button>' : '') +
+        (o.status === 'pending' ? '<button class="btn sm" data-ship="' + o.id + '">发货</button>' : '') +
+        (o.status === 'shipping' ? '<button class="btn sm" data-done="' + o.id + '">完成</button>' : '') +
+        (o.status !== 'cancelled' && o.status !== 'done' ? '<button class="btn ghost sm" data-cancel="' + o.id + '">取消</button>' : '') +
+        '</td></tr>'
+      ).join('') || '<tr><td colspan="6" class="muted">暂无</td></tr>'
+    }
+
+    function renderUsers() {
+      document.getElementById('usersBody').innerHTML = filteredUsers().map((u) =>
+        '<tr><td>' + escapeHtml(u.avatar || '🐾') + ' ' + escapeHtml(u.nickname) +
+        '<div class="muted">' + escapeHtml(u.joinedAt || '') + '</div></td>' +
+        '<td>' + escapeHtml(u.phone) + '</td><td>' + escapeHtml(u.city) + '</td>' +
+        '<td>' + (u.petCount || 0) + ' / ' + (u.orderCount || 0) + ' / ' + (u.postCount || 0) + '</td>' +
+        '<td><span class="tag ' + ((u.status || 'active') === 'banned' ? 'bad' : 'ok') + '">' +
+        ((u.status || 'active') === 'banned' ? '已停用' : '正常') + '</span></td>' +
+        '<td class="actions">' +
+        ((u.status || 'active') === 'banned'
+          ? '<button class="btn sm" data-unban="' + u.id + '">恢复</button>'
+          : '<button class="btn danger sm" data-ban="' + u.id + '">停用</button>') +
+        '</td></tr>'
+      ).join('') || '<tr><td colspan="6" class="muted">暂无</td></tr>'
+    }
+
+    function renderPets() {
+      document.getElementById('petsBody').innerHTML = filteredPets().map((p) =>
+        '<tr><td>' + escapeHtml(p.avatar || '🐾') + ' ' + escapeHtml(p.name) +
+        '</td><td>' + escapeHtml(p.ownerName) + '<div class="muted">' + escapeHtml(p.ownerPhone) + '</div></td>' +
+        '<td>' + escapeHtml(p.breed || p.species || '') + '</td><td>' + escapeHtml(p.gender || '') +
+        '</td><td>' + escapeHtml(p.birthday || '—') + '</td><td>' + escapeHtml(p.createdAt || '') + '</td></tr>'
+      ).join('') || '<tr><td colspan="6" class="muted">暂无</td></tr>'
+    }
+
+    function renderPosts() {
+      document.getElementById('postsBody').innerHTML = filteredPosts().map((p) =>
+        '<tr><td>' + escapeHtml(p.user) + '<div class="muted">' + escapeHtml(p.createdAt || p.time || '') + '</div></td>' +
+        '<td>' + escapeHtml((p.text || p.rawText || '').slice(0, 80)) + '</td>' +
+        '<td>👍 ' + (p.likes || 0) + ' · 💬 ' + (p.commentCount || p.comments || 0) + '</td>' +
+        '<td><span class="tag ' + (p.status === 'hidden' ? 'bad' : 'ok') + '">' + escapeHtml(p.status || 'published') + '</span></td>' +
+        '<td class="actions">' +
+        (p.status === 'hidden'
+          ? '<button class="btn sm" data-showpost="' + p.id + '">恢复</button>'
+          : '<button class="btn ghost sm" data-hidepost="' + p.id + '">隐藏</button>') +
+        '<button class="btn danger sm" data-delpost="' + p.id + '">删除</button></td></tr>'
+      ).join('') || '<tr><td colspan="5" class="muted">暂无</td></tr>'
+    }
+
+    function renderSocial() {
+      const s = social || { friendships: [], messageTotal: 0, unreadTotal: 0 }
+      document.getElementById('sFriends').textContent = (s.friendships || []).length
+      document.getElementById('sMsg').textContent = s.messageTotal || 0
+      document.getElementById('sUnread').textContent = s.unreadTotal || 0
+      const avg = (s.friendships || []).length
+        ? Math.round((s.messageTotal || 0) / (s.friendships.length || 1))
+        : 0
+      document.getElementById('sAvg').textContent = avg
+      document.getElementById('socialBody').innerHTML = (s.friendships || []).map((f) =>
+        '<tr><td>' + escapeHtml(f.userA.nickname) + '<div class="muted">' + escapeHtml(f.userA.phone || '') + '</div></td>' +
+        '<td>' + escapeHtml(f.userB.nickname) + '<div class="muted">' + escapeHtml(f.userB.phone || '') + '</div></td>' +
+        '<td>' + f.msgCount + '</td><td>' + escapeHtml(f.createdAt || '') + '</td></tr>'
+      ).join('') || '<tr><td colspan="4" class="muted">暂无好友关系</td></tr>'
+    }
+
+    function renderSystem() {
+      const s = system || {}
+      const row = (k, v, ok) =>
+        '<div class="kv"><span>' + k + '</span><div>' + v +
+        (ok === true ? ' <span class="ok-dot">● 已就绪</span>' : ok === false ? ' <span class="bad-dot">● 未配置</span>' : '') +
+        '</div></div>'
+      document.getElementById('systemBody').innerHTML =
+        row('服务端口', s.port || '-') +
+        row('支付模式', s.payMode || '-') +
+        row('短信模式', s.smsMode || '-') +
+        row('地图供应商', s.mapProvider || '-', s.mapProvider === 'qq' ? s.qqMapKeySet : s.mapProvider === 'baidu' ? s.baiduAkSet : s.amapKeySet) +
+        row('腾讯地图 Key', s.qqMapKeySet ? '已配置' : '未配置', !!s.qqMapKeySet) +
+        row('高德 Key', s.amapKeySet ? '已配置' : '未配置', !!s.amapKeySet) +
+        row('百度 AK', s.baiduAkSet ? '已配置' : '未配置', !!s.baiduAkSet) +
+        row('微信 AppId', s.wxAppIdSet ? '已配置' : '未配置', !!s.wxAppIdSet) +
+        row('微信支付', s.wxPayReady ? '商户参数齐全' : '未配齐', !!s.wxPayReady) +
+        row('周边半径', (s.nearbyRadius || 5000) + ' m') +
+        row('对外地址', s.publicBase || '-') +
+        row('管理会话数', s.adminSessions || 0) +
+        row('用户会话数', s.userSessions || 0)
+    }
+
+    function renderAll() {
+      renderTopStats()
+      renderDash()
+      renderGoods()
+      renderOrders()
+      renderUsers()
+      renderPets()
+      renderPosts()
+      renderSocial()
+      renderSystem()
+    }
+
+    async function refresh() {
+      const [g, o, u, p, petsRes, socialRes, st, sys] = await Promise.all([
+        api('/api/goods'),
+        api('/api/orders'),
+        api('/api/admin/users'),
+        api('/api/admin/posts'),
+        api('/api/admin/pets'),
+        api('/api/admin/social'),
+        api('/api/admin/stats'),
+        api('/api/admin/system')
+      ])
+      cats = g.cats || cats
+      goods = g.goods || []
+      orders = o.orders || []
+      users = u.users || []
+      posts = p.posts || []
+      pets = petsRes.pets || []
+      social = socialRes
+      dash = st
+      system = sys
+      fillCats()
+      renderAll()
+    }
+
+    function showView(name) {
+      currentView = name
+      document.querySelectorAll('.nav-btn').forEach((btn) => btn.classList.toggle('on', btn.dataset.view === name))
+      ;['dash', 'goods', 'orders', 'users', 'pets', 'posts', 'social', 'system'].forEach((v) => {
+        document.getElementById('view-' + v).hidden = v !== name
+      })
+      const titles = {
+        dash: '运营概览', goods: '商城维护', orders: '订单管理', users: '用户',
+        pets: '宠物档案', posts: '动态审核', social: '社交关系', system: '系统状态'
+      }
+      document.getElementById('pageTitle').textContent = titles[name] || ''
+    }
+
+    document.getElementById('loginBtn').onclick = async () => {
+      document.getElementById('loginError').textContent = ''
+      try {
+        await api('/api/login', 'POST', { password: document.getElementById('password').value })
+        gate.hidden = true
+        shell.hidden = false
+        await refresh()
+        showView('dash')
+      } catch (e) {
+        document.getElementById('loginError').textContent = e.message
+      }
+    }
+    document.getElementById('password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('loginBtn').click()
+    })
+    document.getElementById('logoutBtn').onclick = async () => {
+      await api('/api/logout', 'POST')
+      shell.hidden = true
+      gate.hidden = false
+    }
+    document.getElementById('refreshBtn').onclick = () => refresh().catch((e) => alert(e.message))
+    document.querySelectorAll('.nav-btn').forEach((btn) => { btn.onclick = () => showView(btn.dataset.view) })
+
+    ;['goodsQ', 'goodsFilter'].forEach((id) => {
+      document.getElementById(id).oninput = renderGoods
+      document.getElementById(id).onchange = renderGoods
+    })
+    ;['orderQ', 'orderPay', 'orderStatus'].forEach((id) => {
+      document.getElementById(id).oninput = renderOrders
+      document.getElementById(id).onchange = renderOrders
+    })
+    ;['userQ', 'userStatus'].forEach((id) => {
+      document.getElementById(id).oninput = renderUsers
+      document.getElementById(id).onchange = renderUsers
+    })
+    document.getElementById('petQ').oninput = renderPets
+    ;['postQ', 'postStatus'].forEach((id) => {
+      document.getElementById(id).oninput = renderPosts
+      document.getElementById(id).onchange = renderPosts
+    })
+
+    document.getElementById('resetGoodsBtn').onclick = resetGoodsForm
+    document.getElementById('gThumb').oninput = updateThumbPreview
+    document.getElementById('gImages').oninput = updateGalleryPreview
+    document.getElementById('uploadThumbBtn').onclick = async () => {
+      const file = document.getElementById('gThumbFile').files[0]
+      if (!file) return alert('请先选择图片文件')
+      try {
+        const url = await uploadImageFile(file)
+        document.getElementById('gThumb').value = url
+        updateThumbPreview()
+      } catch (e) { alert(e.message) }
+    }
+    document.getElementById('uploadGalleryBtn').onclick = async () => {
+      const files = Array.from(document.getElementById('gGalleryFile').files || [])
+      if (!files.length) return alert('请先选择图片文件')
+      try {
+        const urls = []
+        for (const file of files) urls.push(await uploadImageFile(file))
+        const cur = document.getElementById('gImages').value.trim()
+        document.getElementById('gImages').value = [cur].concat(urls).filter(Boolean).join('\n')
+        if (!document.getElementById('gThumb').value.trim() && urls[0]) {
+          document.getElementById('gThumb').value = urls[0]
+          updateThumbPreview()
+        }
+        updateGalleryPreview()
+      } catch (e) { alert(e.message) }
+    }
+
+    document.getElementById('saveGoodsBtn').onclick = async () => {
+      const payload = {
+        name: document.getElementById('gName').value,
+        price: document.getElementById('gPrice').value,
+        cat: document.getElementById('gCat').value,
+        stock: document.getElementById('gStock').value,
+        icon: document.getElementById('gIcon').value,
+        sold: document.getElementById('gSold').value,
+        desc: document.getElementById('gDesc').value,
+        thumb: document.getElementById('gThumb').value,
+        images: document.getElementById('gImages').value.split(/\n+/).map((s) => s.trim()).filter(Boolean),
+        intro: document.getElementById('gIntro').value,
+        onSale: document.getElementById('gOnSale').value === 'true'
+      }
+      try {
+        if (editingId) await api('/api/goods/' + encodeURIComponent(editingId), 'PUT', payload)
+        else await api('/api/goods', 'POST', payload)
+        resetGoodsForm()
+        await refresh()
+      } catch (e) { alert(e.message) }
+    }
+
+    document.getElementById('goodsBody').onclick = async (e) => {
+      const edit = e.target.getAttribute('data-edit')
+      const del = e.target.getAttribute('data-del')
+      const toggle = e.target.getAttribute('data-toggle')
+      if (edit) {
+        const g = goods.find((x) => x.id === edit)
+        if (!g) return
+        editingId = g.id
+        document.getElementById('goodsFormTitle').textContent = '编辑商品'
+        document.getElementById('gName').value = g.name
+        document.getElementById('gPrice').value = g.price
+        document.getElementById('gCat').value = g.cat
+        document.getElementById('gStock').value = g.stock
+        document.getElementById('gIcon').value = g.icon
+        document.getElementById('gSold').value = g.sold
+        document.getElementById('gDesc').value = g.desc || ''
+        document.getElementById('gThumb').value = g.thumb || ''
+        document.getElementById('gImages').value = (g.images || []).join('\n')
+        document.getElementById('gIntro').value = g.intro || ''
+        document.getElementById('gOnSale').value = g.onSale ? 'true' : 'false'
+        updateThumbPreview()
+        updateGalleryPreview()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+      if (del) {
+        if (!confirm('确定删除该商品？')) return
+        await api('/api/goods/' + encodeURIComponent(del), 'DELETE')
+        await refresh()
+      }
+      if (toggle) {
+        const g = goods.find((x) => x.id === toggle)
+        if (!g) return
+        await api('/api/goods/' + encodeURIComponent(toggle), 'PUT', Object.assign({}, g, { onSale: !g.onSale }))
+        await refresh()
+      }
+    }
+
+    document.getElementById('ordersBody').onclick = async (e) => {
+      const id = e.target.getAttribute('data-pay') || e.target.getAttribute('data-ship') ||
+        e.target.getAttribute('data-done') || e.target.getAttribute('data-cancel') || e.target.getAttribute('data-refund')
+      if (!id) return
+      const patch = {}
+      if (e.target.getAttribute('data-pay')) patch.payStatus = 'paid'
+      if (e.target.getAttribute('data-refund')) patch.payStatus = 'refunded'
+      if (e.target.getAttribute('data-ship')) patch.status = 'shipping'
+      if (e.target.getAttribute('data-done')) patch.status = 'done'
+      if (e.target.getAttribute('data-cancel')) patch.status = 'cancelled'
+      try {
+        await api('/api/orders/' + encodeURIComponent(id), 'PATCH', patch)
+        await refresh()
+      } catch (err) { alert(err.message) }
+    }
+
+    document.getElementById('usersBody').onclick = async (e) => {
+      const ban = e.target.getAttribute('data-ban')
+      const unban = e.target.getAttribute('data-unban')
+      const id = ban || unban
+      if (!id) return
+      if (ban && !confirm('停用后该用户无法登录，确定？')) return
+      await api('/api/admin/users/' + encodeURIComponent(id), 'PATCH', { status: ban ? 'banned' : 'active' })
+      await refresh()
+    }
+
+    document.getElementById('postsBody').onclick = async (e) => {
+      const hide = e.target.getAttribute('data-hidepost')
+      const show = e.target.getAttribute('data-showpost')
+      const del = e.target.getAttribute('data-delpost')
+      if (del) {
+        if (!confirm('彻底删除这条动态？')) return
+        await api('/api/admin/posts/' + encodeURIComponent(del), 'DELETE')
+        await refresh()
+        return
+      }
+      const id = hide || show
+      if (!id) return
+      await api('/api/admin/posts/' + encodeURIComponent(id), 'PATCH', { status: hide ? 'hidden' : 'published' })
+      await refresh()
+    }
+
+    api('/api/me').then((data) => {
+      if (data.ok) {
+        gate.hidden = true
+        shell.hidden = false
+        refresh().then(() => showView('dash'))
+      }
+    }).catch(() => {})
+  </script>
+</body>
+</html>

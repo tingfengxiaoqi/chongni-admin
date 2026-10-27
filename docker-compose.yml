@@ -1,0 +1,18 @@
+services:
+  chongni-admin:
+    image: chongni-admin:latest
+    build:
+      context: .
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    container_name: chongni-admin
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8789}:8789"
+    environment:
+      NODE_ENV: production
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./data:/app/data
+      - ./uploads:/app/uploads

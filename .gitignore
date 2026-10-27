@@ -1,0 +1,5 @@
+data/db.json
+uploads/
+dist/
+config.json
+.DS_Store
