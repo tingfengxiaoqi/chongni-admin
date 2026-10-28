@@ -367,14 +367,23 @@ function verifySmsCode(phone, code) {
   return true
 }
 
+function normalizeCityName(value) {
+  let city = value
+  if (Array.isArray(city)) city = city[0] || ''
+  city = String(city || '').trim()
+  if (!city || city === '[]') return ''
+  return city.replace(/市$/, '')
+}
+
 function findOrCreateUser(db, phone, patch) {
   let user = db.users.find((u) => u.phone === phone)
   if (!user) {
+    const city = patch && patch.city ? normalizeCityName(patch.city) : ''
     user = {
       id: uid('u'),
       phone,
       nickname: '铲屎官' + phone.slice(-4),
-      city: '上海',
+      city: city || '',
       avatar: '🐾',
       joinedAt: today(),
       openid: '',
@@ -382,9 +391,24 @@ function findOrCreateUser(db, phone, patch) {
       createdAt: nowText()
     }
     db.users.push(user)
+    if (patch) {
+      const rest = Object.assign({}, patch)
+      delete rest.city
+      Object.assign(user, rest)
+    }
+  } else {
+    if (!user.status) user.status = 'active'
+    if (patch) {
+      const next = Object.assign({}, patch)
+      if (next.city !== undefined) {
+        const city = normalizeCityName(next.city)
+        // 仅在尚未设置城市时用定位结果填充，避免覆盖用户手动修改
+        if (city && !normalizeCityName(user.city)) user.city = city
+        delete next.city
+      }
+      Object.assign(user, next)
+    }
   }
-  if (!user.status) user.status = 'active'
-  if (patch) Object.assign(user, patch)
   return user
 }
 
@@ -506,9 +530,40 @@ function relativeTime(createdAt) {
   return String(createdAt).slice(0, 10)
 }
 
-function mapPost(post, userId) {
+function isFriendPair(db, a, b) {
+  if (!db || !a || !b) return false
+  return db.friendships.some((f) =>
+    (f.userA === a && f.userB === b) || (f.userB === a && f.userA === b)
+  )
+}
+
+function createFriendship(db, userA, userB) {
+  if (!userA || !userB || userA === userB) return { ok: false, error: '不能添加自己' }
+  if (isFriendPair(db, userA, userB)) return { ok: false, error: '已经是好友了' }
+  db.friendships.push({
+    id: uid('fs_'),
+    userA,
+    userB,
+    createdAt: nowText()
+  })
+  db.chatMessages.push({
+    id: uid('c_'),
+    fromUserId: userB,
+    toUserId: userA,
+    text: '我们已经成为好友啦，聊聊你家毛孩子吧～',
+    time: nowText(),
+    read: false
+  })
+  return { ok: true }
+}
+
+function mapPost(post, userId, db) {
   const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
   const commentList = Array.isArray(post.commentList) ? post.commentList : []
+  const allowAddFriend = post.allowAddFriend !== false
+  const mine = Boolean(userId && post.userId && post.userId === userId)
+  const friend = Boolean(userId && post.userId && db && isFriendPair(db, userId, post.userId))
+  const canAddFriend = Boolean(userId && post.userId && !mine && allowAddFriend && !friend)
   return {
     id: post.id,
     userId: post.userId || '',
@@ -526,8 +581,11 @@ function mapPost(post, userId) {
     commentPreview: commentList.slice(-2),
     time: relativeTime(post.createdAt) || post.time || '',
     createdAt: post.createdAt || '',
-    mine: Boolean(userId && post.userId && post.userId === userId),
-    status: post.status || 'published'
+    mine,
+    status: post.status || 'published',
+    allowAddFriend,
+    isFriend: friend,
+    canAddFriend
   }
 }
 
@@ -799,7 +857,11 @@ const server = http.createServer(async (req, res) => {
           if (wx && wx.openid) openid = wx.openid
         } catch (e) {}
       }
-      const user = findOrCreateUser(db, phone, openid ? { openid } : null)
+      const city = normalizeCityName(body.city)
+      const patch = {}
+      if (openid) patch.openid = openid
+      if (city) patch.city = city
+      const user = findOrCreateUser(db, phone, Object.keys(patch).length ? patch : null)
       if ((user.status || 'active') === 'banned') {
         send(res, 403, { error: '账号已被停用，请联系客服' })
         return
@@ -867,7 +929,10 @@ const server = http.createServer(async (req, res) => {
         return
       }
       if (body.nickname !== undefined) user.nickname = String(body.nickname || '').trim() || user.nickname
-      if (body.city !== undefined) user.city = String(body.city || '').trim() || user.city
+      if (body.city !== undefined) {
+        const city = normalizeCityName(body.city)
+        if (city) user.city = city
+      }
       if (body.avatar !== undefined) user.avatar = String(body.avatar || '🐾').slice(0, 4)
       saveDb(db)
       send(res, 200, { user: publicUser(user) })
@@ -956,7 +1021,7 @@ const server = http.createServer(async (req, res) => {
       }
       posts = posts.slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
       send(res, 200, {
-        posts: posts.map((p) => mapPost(p, auth ? auth.user.id : '')),
+        posts: posts.map((p) => mapPost(p, auth ? auth.user.id : '', db)),
         city: city || '',
         breed: breed || ''
       })
@@ -1185,7 +1250,7 @@ const server = http.createServer(async (req, res) => {
         userId: auth.user.id,
         user: auth.user.nickname,
         avatar: auth.user.avatar || '🐾',
-        city: (auth.user.city || '上海') + ' · 同城',
+        city: (auth.user.city ? (auth.user.city + ' · 同城') : '同城'),
         text,
         imgs,
         photo: String(body.photo || '').slice(0, 900000),
@@ -1195,12 +1260,13 @@ const server = http.createServer(async (req, res) => {
         likedBy: [],
         tab: body.tab === 'breed' ? 'breed' : 'city',
         breed: pets[0] ? pets[0].breed : '',
+        allowAddFriend: body.allowAddFriend !== false && body.allowAddFriend !== 0 && body.allowAddFriend !== '0',
         createdAt: nowText(),
         status: 'published'
       }
       db.posts.unshift(post)
       saveDb(db)
-      send(res, 200, { post: mapPost(post, auth.user.id) })
+      send(res, 200, { post: mapPost(post, auth.user.id, db) })
       return
     }
 
@@ -1218,7 +1284,7 @@ const server = http.createServer(async (req, res) => {
       else post.likedBy.push(auth.user.id)
       post.likes = post.likedBy.length
       saveDb(db)
-      send(res, 200, { post: mapPost(post, auth.user.id) })
+      send(res, 200, { post: mapPost(post, auth.user.id, db) })
       return
     }
 
@@ -1259,7 +1325,7 @@ const server = http.createServer(async (req, res) => {
       saveDb(db)
       send(res, 200, {
         comment,
-        post: mapPost(post, auth.user.id)
+        post: mapPost(post, auth.user.id, db)
       })
       return
     }
@@ -1289,13 +1355,13 @@ const server = http.createServer(async (req, res) => {
       if (!post) return send(res, 404, { error: '动态不存在' })
       if (!Array.isArray(post.commentList)) post.commentList = []
       send(res, 200, {
-        post: mapPost(post, auth ? auth.user.id : ''),
+        post: mapPost(post, auth ? auth.user.id : '', db),
         comments: post.commentList.slice().reverse()
       })
       return
     }
 
-    // 好友
+    // 好友（手机号 / 动态作者均可添加，不限制好友人数）
     if (pathname === '/api/friends' && req.method === 'GET') {
       const auth = getUser(req)
       if (!auth) return send(res, 401, { error: '未登录' })
@@ -1307,33 +1373,37 @@ const server = http.createServer(async (req, res) => {
       const auth = getUser(req)
       if (!auth) return send(res, 401, { error: '未登录' })
       const body = await readJson(req)
-      const phone = String(body.phone || '').trim()
-      if (!/^1\d{10}$/.test(phone)) return send(res, 400, { error: '请填写对方注册手机号' })
-      if (phone === auth.user.phone) return send(res, 400, { error: '不能添加自己' })
       const db = loadDb()
-      const other = db.users.find((u) => u.phone === phone)
-      if (!other) return send(res, 404, { error: '对方还没注册宠溺' })
-      const exists = db.friendships.some((f) =>
-        (f.userA === auth.user.id && f.userB === other.id) ||
-        (f.userB === auth.user.id && f.userA === other.id)
-      )
-      if (exists) return send(res, 400, { error: '已经是好友了' })
-      db.friendships.push({
-        id: uid('fs_'),
-        userA: auth.user.id,
-        userB: other.id,
-        createdAt: nowText()
-      })
-      db.chatMessages.push({
-        id: uid('c_'),
-        fromUserId: other.id,
-        toUserId: auth.user.id,
-        text: '我们已经成为好友啦，聊聊你家毛孩子吧～',
-        time: nowText(),
-        read: false
-      })
+      let other = null
+      const postId = String(body.postId || '').trim()
+      const userId = String(body.userId || '').trim()
+      const phone = String(body.phone || '').trim()
+
+      if (postId) {
+        const post = db.posts.find((p) => p.id === postId && p.status !== 'hidden')
+        if (!post) return send(res, 404, { error: '动态不存在' })
+        if (post.allowAddFriend === false) {
+          return send(res, 403, { error: '作者关闭了通过动态加好友' })
+        }
+        if (!post.userId) return send(res, 400, { error: '无法添加该作者' })
+        other = db.users.find((u) => u.id === post.userId)
+        if (!other) return send(res, 404, { error: '对方账号不存在' })
+      } else if (userId) {
+        other = db.users.find((u) => u.id === userId)
+        if (!other) return send(res, 404, { error: '对方账号不存在' })
+      } else if (phone) {
+        if (!/^1\d{10}$/.test(phone)) return send(res, 400, { error: '请填写对方注册手机号' })
+        if (phone === auth.user.phone) return send(res, 400, { error: '不能添加自己' })
+        other = db.users.find((u) => u.phone === phone)
+        if (!other) return send(res, 404, { error: '对方还没注册宠溺' })
+      } else {
+        return send(res, 400, { error: '请通过动态或手机号添加好友' })
+      }
+
+      const result = createFriendship(db, auth.user.id, other.id)
+      if (!result.ok) return send(res, 400, { error: result.error })
       saveDb(db)
-      send(res, 200, { friends: buildFriendList(db, auth.user.id) })
+      send(res, 200, { friends: buildFriendList(db, auth.user.id), friendId: other.id })
       return
     }
 
@@ -1684,7 +1754,7 @@ const server = http.createServer(async (req, res) => {
       if (!isAdmin(req)) return send(res, 401, { error: '需要管理员' })
       const db = loadDb()
       send(res, 200, {
-        posts: db.posts.map((p) => Object.assign({}, mapPost(p, ''), {
+        posts: db.posts.map((p) => Object.assign({}, mapPost(p, '', db), {
           likedByCount: Array.isArray(p.likedBy) ? p.likedBy.length : 0,
           commentCount: Array.isArray(p.commentList) ? p.commentList.length : Number(p.comments) || 0,
           status: p.status || 'published',
@@ -1704,7 +1774,7 @@ const server = http.createServer(async (req, res) => {
       if (!post) return send(res, 404, { error: '动态不存在' })
       if (body.status) post.status = body.status
       saveDb(db)
-      send(res, 200, { post: mapPost(post, '') })
+      send(res, 200, { post: mapPost(post, '', db) })
       return
     }
 

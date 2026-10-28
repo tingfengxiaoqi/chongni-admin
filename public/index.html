@@ -519,7 +519,8 @@
     function renderPosts() {
       document.getElementById('postsBody').innerHTML = filteredPosts().map((p) =>
         '<tr><td>' + escapeHtml(p.user) + '<div class="muted">' + escapeHtml(p.createdAt || p.time || '') + '</div></td>' +
-        '<td>' + escapeHtml((p.text || p.rawText || '').slice(0, 80)) + '</td>' +
+        '<td>' + escapeHtml((p.text || p.rawText || '').slice(0, 80)) +
+        '<div class="muted">' + (p.allowAddFriend === false ? '禁止动态加好友' : '可动态加好友') + '</div></td>' +
         '<td>👍 ' + (p.likes || 0) + ' · 💬 ' + (p.commentCount || p.comments || 0) + '</td>' +
         '<td><span class="tag ' + (p.status === 'hidden' ? 'bad' : 'ok') + '">' + escapeHtml(p.status || 'published') + '</span></td>' +
         '<td class="actions">' +
